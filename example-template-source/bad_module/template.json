@@ -1,0 +1,22 @@
+{
+  "name": "Bad Module",
+  "description": "A bad module that should have lots of validation errors",
+  "type": "module",
+  "tags": [
+    "bad"
+  ],
+  "setting_subscription": {
+    "bad": true
+  },
+  "publish_settings": [
+    "bad"
+  ],
+  "default_settings": {
+    "good" : null,
+    "bad": [
+      {
+        "module": "This cant be knocked out"
+      }
+    ]
+  }
+}

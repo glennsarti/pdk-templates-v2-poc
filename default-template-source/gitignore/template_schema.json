@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$id": "http://puppet.com/schema/does_not_exist.json",
+  "type": "object",
+  "title": "The Git Ignore Template Schema",
+  "properties": {
+    "paths": {
+      "$id": "#/properties/paths",
+      "title": "Paths property",
+      "description": "Array of file paths to ignore during git operations",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {}
+}

@@ -1,0 +1,34 @@
+{
+  "name": "PDK Ignore",
+  "description": "A .pdkignore file in your repo allows you to specify files to ignore when building a module package with `pdk build`.",
+  "type": "module",
+  "always_apply": true,
+  "tags": [
+    "pdk",
+    "ignore",
+    "default"
+  ],
+  "setting_subscription": [
+    "gitignore_paths"
+  ],
+  "default_settings": {
+    "use_gitignore": true,
+    "paths" : [
+      "/appveyor.yml",
+      "/.fixtures.yml",
+      "/Gemfile",
+      "/.gitattributes",
+      "/.gitignore",
+      "/.gitlab-ci.yml",
+      "/.pdkignore",
+      "/Rakefile",
+      "/rakelib/",
+      "/.rspec",
+      "/.rubocop.yml",
+      "/.travis.yml",
+      "/.yardopts",
+      "/spec/",
+      "/.vscode/"
+    ]
+  }
+}

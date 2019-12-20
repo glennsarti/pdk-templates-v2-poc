@@ -1,0 +1,168 @@
+<%
+  if settings['deploy_to_forge'] && settings['deploy_to_forge']['enabled']
+    # If Deploy To Forge is enabled..
+    # - Inject the deployment stage using the tag regex
+    settings['stages'] << {
+      'name' => 'deploy',
+      'if'   => "tag =~ #{settings['deploy_to_forge']['tag_regex']}"
+    }
+    # - Inject the deployment task into the includes
+    settings['includes']['default_deploy'] = {
+      'env'   => 'DEPLOY_TO_FORGE=yes',
+      'stage' => 'deploy'
+    }
+  end
+-%>
+---
+<% if settings['os'] -%>
+os:
+<% settings['os'].each do |os| -%>
+  - <%= os %>
+<%   end -%>
+<% end -%>
+<% if settings['dist'] -%>
+dist: <%= settings['dist'] %>
+<% else -%>
+dist: xenial
+<% end -%>
+language: ruby
+cache: bundler
+<% if !settings.nil? && settings.has_key?('addons') -%>
+addons:
+<%   settings['addons'].each do |addon, params| -%>
+  <%= addon %>:
+<%     params.each do |param_name, param_value| -%>
+    <%= param_name %>:<%= param_value.is_a?(String) ? " #{param_value}" : "" %>
+<%       if param_value.is_a?(Array) -%>
+<%         param_value.each do |r| -%>
+      - <%= r %>
+<%         end -%>
+<%       end -%>
+<%     end -%>
+<%   end -%>
+<% end -%>
+before_install:
+<% if settings['before_install_pre'] -%>
+<%   settings['before_install_pre'].each do |bip| -%>
+  - <%= bip %>
+<%   end -%>
+<% end -%>
+  - bundle -v
+  - rm -f Gemfile.lock
+  - gem update --system $RUBYGEMS_VERSION
+  - gem --version
+  - bundle -v
+<% if settings['before_install_post'] -%>
+<%   settings['before_install_post'].each do |bip| -%>
+  - <%= bip %>
+<%   end -%>
+<% end -%>
+script:
+<% if settings['simplecov'] -%>
+  - 'SIMPLECOV=yes bundle exec rake $CHECK'
+<% else -%>
+  - 'bundle exec rake $CHECK'
+<% end -%>
+bundler_args: <%= settings['bundler_args'] %>
+rvm:
+<% settings['ruby_versions'].each do |ruby_version| -%>
+  - <%= ruby_version %>
+<% end -%>
+<% if settings.has_key?('env') || settings.has_key?('global_env') -%>
+env:
+<%   if settings.has_key?('global_env') -%>
+  global:
+<%     settings['global_env'].each do |env| -%>
+    - <%= env %>
+<%     end -%>
+<%   end -%>
+<%   if settings.has_key?('env') -%>
+  matrix:
+<%     settings['env'].each do |env| -%>
+    - <%= env %>
+<%     end -%>
+<%   end -%>
+<% end -%>
+<% if settings.has_key?('stages') -%>
+stages:
+<%   settings['stages'].each do |stage| -%>
+<%     if stage.is_a?(String) -%>
+  - <%= stage %>
+<%     elsif stage.is_a?(Hash) -%>
+  -
+<%       stage.keys.sort.each do |key| -%>
+    <%= key %>: <%= stage[key] %>
+<%       end -%>
+<%     end -%>
+<%   end -%>
+<% end -%>
+matrix:
+  fast_finish: true
+  include:
+<% (settings['docker_sets'] || []).each do |set| -%>
+<%   job = settings['docker_defaults'].merge(set['options'] || {}) -%>
+    -
+<%   job.keys.sort.each do |key| -%>
+      <%= key %>: <%= job[key].gsub(/@@SET@@/, set['set']).gsub(/@@COLLECTION@@/, set.fetch('collection', 'puppet6')).gsub(/@@TESTMODE@@/, set.fetch('testmode', 'apply')) %>
+<%   end -%>
+<% end -%>
+<% settings['includes'].values.each do |job|
+     next if job.empty?
+-%>
+    -
+<%   job.keys.sort.each do |key| -%>
+      <%= key %>: <%= job[key] %>
+<%   end -%>
+<% end -%>
+<% if settings['allow_failures'] -%>
+  allow_failures:
+<%   settings['allow_failures'].each do |job| -%>
+    -
+<%     job.keys.sort.each do |key| -%>
+      <%= key %>: <%= job[key] %>
+<%     end -%>
+<%   end -%>
+<% end -%>
+branches:
+<% if ((settings['branches'] || []) - (settings['remove_branches'] || [])).any? -%>
+  only:
+<%   (settings['branches'] - (settings['remove_branches'] || [])).each do |branch| -%>
+    - <%= branch %>
+<%   end -%>
+<% end -%>
+<% if settings['branches_except'] -%>
+  except:
+<%   settings['branches_except'].each do |branch| -%>
+    - <%= branch %>
+<%   end -%>
+<% end -%>
+notifications:
+<% notifications_arr = (settings['notifications'].to_a - settings['remove_notifications'].to_a) -%>
+<% unless notifications_arr.empty? -%>
+<%   notifications = Hash[*notifications_arr.flatten] -%>
+<%   notifications.keys.sort.each do |key| -%>
+<%     if notifications[key].is_a?(Array) or notifications[key].is_a?(Hash) -%>
+  <%= key %>:
+    <%= notifications[key].to_yaml.sub(/---\R/, '').gsub(/\R/, "\n    ").strip %>
+<%     else -%>
+  <%= key %>: <%= notifications[key] %>
+<%     end -%>
+<%   end -%>
+<% end -%>
+<% unless settings['user'].nil? || settings['secure'].nil? -%>
+<% if settings['before_deploy'] -%>
+before_deploy:
+<%   settings['before_deploy'].each do |b_deploy| -%>
+  - <%= b_deploy %>
+<%   end -%>
+<% end -%>
+deploy:
+  provider: puppetforge
+  user: <%= settings['user'] %>
+  password:
+    secure: "<%= settings['secure'] %>"
+  on:
+    tags: true
+    all_branches: true
+    condition: "$DEPLOY_TO_FORGE = yes"
+<% end -%>

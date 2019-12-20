@@ -1,0 +1,41 @@
+---
+pdk_template:
+  version: 2
+  template_sources:
+    -
+      type: filesystem
+      location: "../example-template-source"
+    - default
+    # Example git module
+    # -
+    #   type: git
+    #   location: 'https://github.com/user/custom-templates.git'
+    #   ref: master
+
+  templates:
+    - appveyor_ci
+    - travis_ci
+    - rubocop
+    - litmus_tests
+    - ---pdkignore # Example removing an "Always Applied" template
+    # - bad_module
+
+travis_ci:
+  os:
+    - osx
+  ruby_versions:
+    - 2.4.1
+    - 2.7.0
+    - ---2.5.3 # Removing an element from an array
+  stages:
+    - ---spec
+  includes:
+    default_puppet5_checks: --- # Setting a hash value to empty string ""
+    my_checks:
+      env: "glenn-PUPPET_GEM_VERSION=\"~> 5.0\" CHECK=parallel_spec"
+      rvm: "glenn-2.4.5"
+      stage: "glenn-spec"
+
+pdkignore:
+  # use_gitignore: false
+  # bad_setting: true  # A setting that doesn't exist in the template settings

@@ -1,0 +1,126 @@
+# Add the lib folder to the load path
+$LOAD_PATH.unshift(File.join(__dir__, 'lib'))
+
+module_dir = File.expand_path(File.join(__dir__, '..', 'example-module'))
+default_template_dir = File.expand_path(File.join(__dir__, '..', 'default-template-source'))
+
+# helpful alias
+require 'pdk/templating/v2/template_engine'
+V2 = PDK::Templating::V2
+
+desc "Render the example module"
+task :render do
+  puts "Loading the Template Engine..."
+  require 'pdk/templating/v2/template_engine'
+
+  logger = V2.stdout_logger
+
+  # Load the project settings
+  puts "Loading the Project Settings..."
+  project_settings = V2::TemplateUserSettings.from_yaml_file(File.join(module_dir, '.sync.yml'), logger)
+
+  puts "Loading the default template source..."
+  default_source = V2::TemplateSources::Filesystem.new(default_template_dir, logger)
+
+  puts "Setting up the template engine..."
+  engine = V2::TemplateEngine.new(default_source, project_settings, logger)
+
+  puts "Rendering..."
+  result = engine.render
+
+  result.rendered_files.each do |path, value|
+    puts "------- #{path} --------------"
+    puts value.content
+  end
+end
+
+desc "List all available templates"
+task :'list-templates', [:tag] do |task, args|
+  tag = args[:tag]
+  logger = V2.null_logger
+
+  # Load the project settings
+  project_settings = V2::TemplateUserSettings.from_yaml_file(File.join(module_dir, '.sync.yml'), logger)
+
+  default_source = V2::TemplateSources::Filesystem.new(default_template_dir, logger)
+
+  template_type = nil
+  # template_type = :module
+  # template_type = :control_repo
+
+  engine = V2::TemplateEngine.new(default_source, project_settings, logger, template_type: template_type)
+
+  requested_templates = project_settings.requested_templates
+  template_sources = engine.template_sources(auto_append_default_source: true)
+  puts "\nAvailable Templates"
+  puts "-------------------"
+  engine.all_templates(template_sources).sort { |a,b| a.name <=> b.name}.each do |template|
+    next unless tag.nil? || template.tags.include?(tag)
+    puts "#{template.name}"
+    puts "\t#{template.description}"
+    puts "\tPath: #{template.path}"
+    puts "\tTags: #{template.tags.join(', ')}" unless template.tags.empty?
+    if project_settings.excluded_templates.include?(template.name)
+      puts "\tExcluded in Project Settings"
+    elsif template.always_apply?
+      puts "\tAlways Applied"
+    end
+    puts "\tIn Project Settings" if requested_templates.include?(template.name)
+    puts
+  end
+end
+
+desc "Show information about a template"
+task :'show-template', [:template_name] do |task, args|
+  template_name = args[:template_name]
+
+  logger = V2.null_logger
+
+  # Load the project settings
+  project_settings = V2::TemplateUserSettings.from_yaml_file(File.join(module_dir, '.sync.yml'), logger)
+
+  default_source = V2::TemplateSources::Filesystem.new(default_template_dir, logger)
+
+  template_type = nil
+  # template_type = :module
+  # template_type = :control_repo
+
+  engine = V2::TemplateEngine.new(default_source, project_settings, logger, template_type: template_type)
+  template_sources = engine.template_sources(auto_append_default_source: true)
+  template = engine.all_templates(template_sources).find { |templ| templ.name == template_name }
+
+  raise "Could not find template #{template_name} in the list of sources" if template.nil?
+
+  puts "#{template.name}"
+  puts "#{'-' * template.name.length}"
+  puts "Description           : #{template.description}"
+  puts "Template Type         : #{template.template_type}"
+  puts "Path                  : #{template.path}"
+  puts "Always Applied        : #{template.always_apply? ? 'Yes' : 'No' }"
+  puts "Setting subscriptions : #{template.setting_subscriptions.empty? ? 'None' : template.setting_subscriptions.join(', ')}"
+  puts "Setting publications  : #{template.setting_publications.empty? ? 'None' : template.setting_publications.keys.join(', ')}"
+
+  validation_errors = V2::Templates.template_validation_errors(template)
+  unless validation_errors.empty?
+    puts
+    puts "#{template.name} Validation Errors"
+    puts "#{'-' * (template.name.length + 18)}"
+    puts "* " + validation_errors.join("\n* ")
+  end
+
+  puts
+  puts "#{template.name} Settings"
+  puts "#{'-' * (template.name.length + 9)}"
+  settings = template.setting_schema.schema['properties']
+  settings.keys.sort.each do |setting_name|
+    setting = settings[setting_name]
+    puts "Name       : #{setting_name}"
+    puts "Description: #{setting['description']}"
+    puts "Type       : #{setting['type']}"
+    default_value = template.default_settings[setting_name].nil? ? '<nil>' : template.default_settings[setting_name].inspect
+    default_value = default_value.slice(0, 120) + " ..." if default_value.length > 120
+    puts "Default    : #{default_value}"
+    puts
+  end
+end
+

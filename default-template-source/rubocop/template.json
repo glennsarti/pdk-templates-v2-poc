@@ -1,0 +1,10 @@
+{
+  "name": "Rubocop",
+  "description": "Template to configure Rubocop",
+  "type": "module",
+  "tags": [
+    "rubocop",
+    "ruby",
+    "validation"
+  ]
+}

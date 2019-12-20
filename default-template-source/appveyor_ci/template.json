@@ -1,0 +1,15 @@
+{
+  "name": "Appveyor CI",
+  "description": "Template to configure AppVeyor CI",
+  "type": "module",
+  "tags": [
+    "appveyor",
+    "ci"
+  ],
+  "publish_settings": {
+    "circular": true
+  },
+  "setting_subscription": [
+    "use_litmus"
+  ]
+}

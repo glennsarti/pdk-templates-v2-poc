@@ -1,0 +1,14 @@
+{
+  "name": "Litmus",
+  "description": "Template to configure Litmus for testing",
+  "type": "module",
+  "tags": [
+    "litmus",
+    "testing",
+    "test",
+    "acceptance"
+  ],
+  "publish_settings": {
+    "use_litmus": true
+  }
+}
